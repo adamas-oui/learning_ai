@@ -1,0 +1,87 @@
+Metadata-Version: 2.4
+Name: ai-job-analyzer
+Version: 0.1.0
+Summary: A production-shaped learning project for AI engineering
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi<1,>=0.115
+Requires-Dist: openai<2,>=1.68
+Requires-Dist: pydantic-settings<3,>=2.8
+Requires-Dist: uvicorn[standard]<1,>=0.34
+Provides-Extra: dev
+Requires-Dist: httpx<1,>=0.28; extra == "dev"
+Requires-Dist: pytest<9,>=8.3; extra == "dev"
+Requires-Dist: ruff<1,>=0.11; extra == "dev"
+
+# AI Job Analyzer
+
+A learning project that separates probabilistic extraction from deterministic business logic.
+The model finds evidence; ordinary Python calculates the score.
+
+## Architecture
+
+```text
+POST /analyze
+      |
+      v
+ExtractionProvider  ---->  structured ExtractionBundle
+  | heuristic                    |
+  | OpenAI                       v
+  +----------------------> deterministic scorer
+                                      |
+                                      v
+                               AnalysisResponse
+```
+
+This boundary is the first important AI-engineering lesson: model output is untrusted input.
+Pydantic validates its shape, and scoring remains inspectable and unit-testable.
+
+## Run locally
+
+Python 3.10 or newer is required.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+uvicorn app.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` and try `POST /analyze`. The default heuristic provider
+works offline and gives us a baseline to beat.
+
+Run the checks:
+
+```bash
+pytest
+ruff check .
+```
+
+## Enable the LLM extractor
+
+Copy `.env.example` to `.env`, then set:
+
+```dotenv
+ANALYZER_PROVIDER=openai
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+Restart the server. Keep `.env` out of version control.
+
+The OpenAI provider uses the Responses API with a Pydantic output schema. The current model
+default favors lower latency and cost for extraction; it remains configuration rather than a
+hard-coded business decision.
+
+## What to study in this slice
+
+1. `app/models.py`: schemas are the contract between probabilistic and deterministic code.
+2. `app/providers/`: both extractors satisfy the same protocol.
+3. `app/scoring.py`: required skills count twice as much as preferred skills.
+4. `tests/`: deterministic logic is tested without spending tokens or calling a network.
+
+## Next iteration
+
+Build a small evaluation set of resumes, job descriptions, and expected requirements. Run both
+providers against it and measure extraction precision/recall before changing prompts. After that,
+add file ingestion and a UI—the quality harness should come before the shiny bits.
